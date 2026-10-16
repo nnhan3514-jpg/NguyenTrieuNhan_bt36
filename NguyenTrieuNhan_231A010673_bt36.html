@@ -1,0 +1,280 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Game Hứng Táo</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f3f6fa;
+            text-align: center;
+            margin: 0;
+            padding: 30px 10px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        #game-container {
+            width: 500px;
+            height: 400px;
+            max-width: 100%;
+            margin: 20px auto;
+            position: relative;
+            overflow: hidden;
+            background: #e8f7ff;
+            border: 3px solid #79b8d8;
+            border-radius: 15px;
+        }
+
+        #basket {
+            position: absolute;
+            width: 80px;
+            height: 25px;
+            background: #8b4513;
+            border: 3px solid #60300c;
+            border-radius: 5px 5px 12px 12px;
+            bottom: 10px;
+            left: 210px;
+        }
+
+        #basket::before {
+            content: "";
+            position: absolute;
+            width: 50px;
+            height: 8px;
+            border: 3px solid #60300c;
+            border-bottom: none;
+            border-radius: 15px 15px 0 0;
+            top: -12px;
+            left: 12px;
+        }
+
+        #apple {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            left: 235px;
+            top: 0;
+            font-size: 28px;
+            line-height: 30px;
+            user-select: none;
+        }
+
+        #info {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 15px;
+        }
+
+        button {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 8px;
+            background: #28a745;
+            color: white;
+            font-size: 17px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #218838;
+        }
+
+        #message {
+            font-size: 24px;
+            font-weight: bold;
+            color: #d62828;
+            margin-top: 15px;
+        }
+
+        .guide {
+            color: #555;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🍎 Mini Game Hứng Táo</h1>
+
+    <div id="info">
+        <div>Điểm: <span id="score">0</span></div>
+        <div>Mạng: <span id="lives">3</span></div>
+    </div>
+
+    <div id="game-container">
+        <div id="apple">🍎</div>
+        <div id="basket"></div>
+    </div>
+
+    <button id="start-btn">Bắt đầu</button>
+
+    <div id="message"></div>
+    <p class="guide">
+        Sử dụng phím ← và → để di chuyển giỏ hứng táo.
+    </p>
+
+    <script>
+        const game = document.getElementById("game-container");
+        const basket = document.getElementById("basket");
+        const apple = document.getElementById("apple");
+        const scoreText = document.getElementById("score");
+        const livesText = document.getElementById("lives");
+        const startBtn = document.getElementById("start-btn");
+        const message = document.getElementById("message");
+
+        const basketWidth = 80;
+        const basketHeight = 25;
+        const appleSize = 30;
+        const basketBottom = 10;
+        const moveSpeed = 25;
+
+        let basketX = 210;
+        let appleX = 0;
+        let appleY = 0;
+        let score = 0;
+        let lives = 3;
+        let fallSpeed = 2;
+        let running = false;
+        let animationId = null;
+        let lastTime = 0;
+
+        // Đưa táo về vị trí ngẫu nhiên phía trên
+        function resetApple() {
+            appleX = Math.random() *
+                (game.clientWidth - appleSize);
+            appleY = 0;
+
+            apple.style.left = appleX + "px";
+            apple.style.top = appleY + "px";
+        }
+
+        // Cập nhật vị trí giỏ
+        function updateBasket() {
+            basket.style.left = basketX + "px";
+        }
+
+        // Điều khiển giỏ bằng phím mũi tên
+        document.addEventListener("keydown", function(event) {
+            if (!running) return;
+
+            if (event.key === "ArrowLeft") {
+                event.preventDefault();
+                basketX = Math.max(0, basketX - moveSpeed);
+                updateBasket();
+            }
+
+            if (event.key === "ArrowRight") {
+                event.preventDefault();
+                basketX = Math.min(
+                    game.clientWidth - basketWidth,
+                    basketX + moveSpeed
+                );
+                updateBasket();
+            }
+        });
+
+        // Kiểm tra va chạm giữa táo và giỏ
+        function checkCollision() {
+            const basketY =
+                game.clientHeight - basketBottom - basketHeight;
+
+            return (
+                appleX + appleSize > basketX &&
+                appleX < basketX + basketWidth &&
+                appleY + appleSize >= basketY &&
+                appleY < basketY + basketHeight
+            );
+        }
+
+        // Vòng lặp chính của game
+        function gameLoop(timestamp) {
+            if (!running) return;
+
+            if (lastTime === 0) lastTime = timestamp;
+
+            const deltaTime = Math.min(
+                (timestamp - lastTime) / 16.67, 3
+            );
+            lastTime = timestamp;
+
+            appleY += fallSpeed * deltaTime;
+            apple.style.top = appleY + "px";
+
+            // Nếu hứng được táo
+            if (checkCollision()) {
+                score++;
+                scoreText.textContent = score;
+
+                // Tăng nhẹ tốc độ rơi sau mỗi lần hứng
+                fallSpeed += 0.2;
+
+                resetApple();
+            }
+            // Nếu táo rơi chạm đáy
+            else if (appleY + appleSize >= game.clientHeight) {
+                lives--;
+                livesText.textContent = lives;
+
+                if (lives <= 0) {
+                    endGame();
+                    return;
+                }
+
+                resetApple();
+            }
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // Bắt đầu hoặc chơi lại
+        function startGame() {
+            if (running) return;
+
+            score = 0;
+            lives = 3;
+            fallSpeed = 2;
+            basketX = (game.clientWidth - basketWidth) / 2;
+            lastTime = 0;
+
+            scoreText.textContent = score;
+            livesText.textContent = lives;
+            message.textContent = "";
+
+            updateBasket();
+            resetApple();
+
+            running = true;
+            startBtn.textContent = "Đang chơi...";
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // Kết thúc game
+        function endGame() {
+            running = false;
+            cancelAnimationFrame(animationId);
+
+            message.textContent = "Game Over! Điểm của bạn: " + score;
+            startBtn.textContent = "Chơi lại";
+        }
+
+        startBtn.addEventListener("click", startGame);
+
+        // Thiết lập vị trí ban đầu
+        updateBasket();
+        resetApple();
+    </script>
+</body>
+</html>
